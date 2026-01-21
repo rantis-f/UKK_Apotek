@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  name              String   @db.VarChar(255)
+  email             String   @unique @db.VarChar(255)
+  email_verified_at DateTime? @db.Timestamp(0)
+  password          String   @db.VarChar(255)
+  remember_token    String?  @db.VarChar(100)
+  jabatan           JabatanUser 
+  
+  created_at        DateTime @default(now()) @db.Timestamp(0)
+  updated_at        DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("users")
+}
+
+model Pelanggan {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  nama_pelanggan  String   @db.VarChar(255)
+  email           String   @unique @db.VarChar(255)
+  katakunci       String   @db.VarChar(15)
+  no_telp         String   @db.VarChar(15)
+  
+  alamat1         String?  @db.VarChar(255)
+  kota1           String?  @db.VarChar(255)
+  propinsi1       String?  @db.VarChar(255)
+  kodepos1        String?  @db.VarChar(255)
+  
+  alamat2         String?  @db.VarChar(255)
+  kota2           String?  @db.VarChar(255)
+  propinsi2       String?  @db.VarChar(255)
+  kodepos2        String?  @db.VarChar(255)
+  
+  alamat3         String?  @db.VarChar(255)
+  kota3           String?  @db.VarChar(255)
+  propinsi3       String?  @db.VarChar(255)
+  kodepos3        String?  @db.VarChar(255)
+  
+  foto            String?  @db.VarChar(255)
+  url_ktp         String?  @db.VarChar(255)
+  
+  penjualans      Penjualan[]
+  keranjangs      Keranjang[]
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("pelanggan")
+}
+
+model JenisObat {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  jenis           String   @unique @db.VarChar(50)
+  deskripsi_jenis String?  @db.VarChar(255)
+  image_url       String?  @db.VarChar(255)
+  
+  obats           Obat[]
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("jenis_obat")
+}
+
+model Obat {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  idjenis         BigInt   @db.UnsignedBigInt
+  nama_obat       String   @db.VarChar(100)
+  harga_jual      Int
+  deskripsi_obat  String?  @db.Text
+  
+  foto1           String?  @db.VarChar(255)
+  foto2           String?  @db.VarChar(255)
+  foto3           String?  @db.VarChar(255)
+  
+  stok            Int      @default(0)
+  
+  jenis_obat      JenisObat @relation(fields: [idjenis], references: [id])
+  detail_juals    DetailPenjualan[]
+  detail_belis    DetailPembelian[]
+  keranjangs      Keranjang[]
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("obat")
+}
+
+model Distributor {
+  id                BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  nama_distributor  String   @db.VarChar(50)
+  telepon           String   @db.VarChar(15)
+  alamat            String   @db.VarChar(255)
+  
+  pembelians        Pembelian[]
+
+  created_at        DateTime @default(now()) @db.Timestamp(0)
+  updated_at        DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("distributor")
+}
+
+model Pembelian {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  nonota          String   @db.VarChar(100)
+  tgl_pembelian   DateTime @db.Date
+  total_bayar     Float    @db.Double
+  id_distributor  BigInt   @db.UnsignedBigInt
+  
+  distributor     Distributor @relation(fields: [id_distributor], references: [id])
+  details         DetailPembelian[]
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("pembelian")
+}
+
+model DetailPembelian {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  id_obat         BigInt   @db.UnsignedBigInt
+  jumlah_beli     Int 
+  harga_beli      Float    @db.Double
+  subtotal        Float    @db.Double
+  id_pembelian    BigInt   @db.UnsignedBigInt
+
+  pembelian       Pembelian @relation(fields: [id_pembelian], references: [id], onDelete: Cascade)
+  obat            Obat      @relation(fields: [id_obat], references: [id])
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("detail_pembelian")
+}
+
+model MetodeBayar {
+  id                  BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  metode_pembayaran   String   @db.VarChar(30)
+  tempat_bayar        String?  @db.VarChar(50)
+  no_rekening         String?  @db.VarChar(25)
+  url_logo            String?  @db.VarChar(255)
+  
+  penjualans          Penjualan[]
+
+  created_at          DateTime @default(now()) @db.Timestamp(0)
+  updated_at          DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("metode_bayar")
+}
+
+model JenisPengiriman {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  jenis_kirim     JenisKirimEnum 
+  nama_ekspedisi  String   @db.VarChar(255)
+  logo_ekspedisi  String?  @db.VarChar(255)
+  
+  penjualans      Penjualan[]
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("jenis_pengiriman")
+}
+
+model Penjualan {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  tgl_penjualan   DateTime @db.Date
+  
+  id_metode_bayar BigInt   @db.UnsignedBigInt
+  id_jenis_kirim  BigInt   @db.UnsignedBigInt
+  id_pelanggan    BigInt   @db.UnsignedBigInt
+  
+  url_resep       String?  @db.VarChar(255)
+  ongkos_kirim    Float    @db.Double
+  biaya_app       Float    @db.Double
+  total_bayar     Float    @db.Double
+  
+  status_order    StatusOrderEnum @default(Menunggu_Konfirmasi)
+  keterangan_status String? @db.VarChar(255)
+
+  metode_bayar    MetodeBayar     @relation(fields: [id_metode_bayar], references: [id])
+  jenis_pengiriman JenisPengiriman @relation(fields: [id_jenis_kirim], references: [id])
+  pelanggan       Pelanggan       @relation(fields: [id_pelanggan], references: [id])
+  
+  details         DetailPenjualan[]
+  pengiriman      Pengiriman?
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("penjualan")
+}
+
+model DetailPenjualan {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  id_penjualan  BigInt   @db.UnsignedBigInt
+  id_obat       BigInt   @db.UnsignedBigInt
+  jumlah_beli   Int    
+  
+  harga_beli    Float    @db.Double 
+
+  subtotal      Float      
+
+  penjualan     Penjualan @relation(fields: [id_penjualan], references: [id], onDelete: Cascade)
+  obat          Obat      @relation(fields: [id_obat], references: [id])
+
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+  updated_at    DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("detail_penjualan")
+}
+
+model Pengiriman {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  id_penjualan    BigInt   @unique @db.UnsignedBigInt
+  no_invoice      String?  @db.VarChar(255)
+  tgl_kirim       DateTime? @db.DateTime(0)
+  tgl_tiba        DateTime? @db.DateTime(0)
+  status_kirim    StatusKirimEnum @default(Sedang_Dikirim)
+  
+  nama_kurir      String?  @db.VarChar(30)
+  telpon_kurir    String?  @db.VarChar(15)
+  bukti_foto      String?  @db.VarChar(255)
+  keterangan      String?  @db.Text
+  
+  penjualan       Penjualan @relation(fields: [id_penjualan], references: [id])
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("pengiriman")
+}
+
+model Keranjang {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  id_pelanggan    BigInt   @db.UnsignedBigInt
+  id_obat         BigInt   @db.UnsignedBigInt
+  jumlah_order    Float    @db.Double
+  harga           Float    @db.Double
+  subtotal        Float    @db.Double
+  
+  pelanggan       Pelanggan @relation(fields: [id_pelanggan], references: [id])
+  obat            Obat      @relation(fields: [id_obat], references: [id])
+
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+  updated_at      DateTime @updatedAt @db.Timestamp(0)
+
+  @@map("keranjang")
+}
+
+enum JabatanUser {
+  admin
+  apoteker
+  karyawan
+  kasir
+  pemilik
+}
+
+enum JenisKirimEnum {
+  ekonomi
+  kargo
+  regular
+  same_day @map("same day")
+  standar
+}
+
+enum StatusOrderEnum {
+  Menunggu_Konfirmasi @map("Menunggu Konfirmasi")
+  Diproses
+  Menunggu_Kurir      @map("Menunggu Kurir")
+  Dibatalkan_Pembeli  @map("Dibatalkan Pembeli")
+  Dibatalkan_Penjual  @map("Dibatalkan Penjual")
+  Bermasalah
+  Selesai
+}
+
+enum StatusKirimEnum {
+  Sedang_Dikirim  @map("Sedang Dikirim")
+  Tiba_Di_Tujuan  @map("Tiba Di Tujuan")
+}
