@@ -35,7 +35,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "rahasia-apotek");
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "rahasia-negara");
         const token = await new SignJWT({
             id: user.id.toString(),
             role: user.jabatan,
