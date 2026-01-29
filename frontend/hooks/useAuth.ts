@@ -1,70 +1,117 @@
-"use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { setCookie, deleteCookie } from "cookies-next";
+import { getCookie, setCookie, deleteCookie } from "cookies-next";
 
-interface User {
+export interface User {
   id: number;
-  name: string;
   email: string;
-  role: "admin" | "pelanggan";
+  role: string;
+  nama_pelanggan?: string;
+  no_telp?: string;
+  foto?: string | null;
+  url_ktp?: string | null;
+  alamat1?: string;
+  kota1?: string;
+  propinsi1?: string;
+  kodepos1?: string;
+  alamat2?: string;
+  kota2?: string;
+  propinsi2?: string;
+  kodepos2?: string;
+  alamat3?: string;
+  kota3?: string;
+  propinsi3?: string;
+  kodepos3?: string;
+  name?: string;
+  jabatan?: string;
 }
 
 interface AuthState {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string, role: "admin" | "pelanggan") => Promise<{ success: boolean; error?: string }>;
+  loading: boolean;
+  login: (email: string, password: string, type: "admin" | "pelanggan") => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  getProfile: () => Promise<void>;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
+      loading: false,
 
-      login: async (email, password, role) => {
+      login: async (email: string, password: string, type: "admin" | "pelanggan") => {
+        set({ loading: true });
         try {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-          const endpoint = role === "admin" ? "/auth/login-admin" : "/auth/login-pelanggan";
+          const path = type === "admin" ? "/auth/login" : "/auth/login-pelanggan";
+          const payload = type === "admin"
+            ? { email, password }
+            : { email, katakunci: password };
 
-          const response = await fetch(`${API_URL}${endpoint}`, {
+          const response = await fetch(`${API_URL}${path}`, {
             method: "POST",
+            body: JSON.stringify(payload),
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, katakunci: password }),
           });
 
           const resData = await response.json();
 
-          if (!response.ok) {
-            throw new Error(resData.message || "Email atau password salah!");
+          if (response.ok && resData.success) {
+            const userData = resData.data;
+            const token = resData.data.token;
+
+            setCookie("token", token, { maxAge: 60 * 60 * 24 });
+            setCookie("user", JSON.stringify(userData), { maxAge: 60 * 60 * 24 });
+
+            set({ user: userData, token: token, loading: false });
+            return { success: true };
           }
 
-          // AMBIL DATA DARI KEY 'data' (Sesuai response API kamu)
-          const userData = resData.data;
-          const token = resData.token;
+          set({ loading: false });
+          return { success: false, error: resData.message || "Email atau Password salah" };
+        } catch (error) {
+          set({ loading: false });
+          return { success: false, error: "Gagal terhubung ke server backend" };
+        }
+      },
 
-          // Simpan ke Cookies untuk Middleware & Hard Reload
-          setCookie("token", token, { maxAge: 60 * 60 * 24 });
-          setCookie("user", JSON.stringify(userData), { maxAge: 60 * 60 * 24 });
+      getProfile: async () => {
+        const tokenFromCookie = getCookie("token");
+        const token = get().token || (tokenFromCookie ? tokenFromCookie.toString() : null);
+        
+        if (!token) return;
 
-          // Update State Zustand
-          set({ user: userData, token: token });
-
-          return { success: true };
-        } catch (error: any) {
-          return { success: false, error: error.message };
+        set({ loading: true });
+        try {
+          const response = await fetch(`${API_URL}/auth/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const resData = await response.json();
+          if (resData.success) {
+            set({ user: resData.data, loading: false });
+            setCookie("user", JSON.stringify(resData.data));
+          } else {
+            set({ loading: false });
+          }
+        } catch (error) {
+          set({ loading: false });
+          console.error("Gagal sinkron data profil:", error);
         }
       },
 
       logout: () => {
         deleteCookie("token");
         deleteCookie("user");
-        set({ user: null, token: null });
+        set({ user: null, token: null, loading: false });
         window.location.href = "/login";
       },
     }),
-    { name: "auth-storage" }
+    {
+      name: "auth-storage",
+    }
   )
 );

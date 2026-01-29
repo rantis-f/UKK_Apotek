@@ -1,74 +1,97 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
+import { headers } from "next/headers";
 
-export async function GET() {
+const serialize = (data: any) => {
+  return JSON.parse(
+    JSON.stringify(data, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
+
+export async function GET(request: NextRequest) {
   try {
+    const headerList = await headers();
+    const role = headerList.get("x-user-role");
+
+    const isOwner = role === 'pemilik';
+    const isAdmin = role === 'admin';
+    const isApoteker = role === 'apoteker';
+    const isKasir = role === 'kasir';
+
+    const canSeeFinance = isOwner || isAdmin;
+    const canSeeOps = isOwner || isAdmin || isKasir || isApoteker;
+
     const [
       totalPendapatan,
       jumlahTransaksi,
       jumlahPelanggan,
+      jumlahStaff,
       jumlahObat,
       stokMenipis,
-      transaksiTerbaru,
-      grafikMingguan
+      transaksiTerbaru
     ] = await Promise.all([
+      canSeeFinance 
+        ? prisma.penjualan.aggregate({ 
+            _sum: { total_bayar: true }, 
+            where: { status_order: 'Selesai' } 
+          })
+        : { _sum: { total_bayar: 0 } },
 
-      prisma.penjualan.aggregate({
-        _sum: { total_bayar: true },
-        where: { status_order: 'Selesai' }
-      }),
+      canSeeOps ? prisma.penjualan.count() : 0,
 
-      prisma.penjualan.count(),
+      canSeeFinance ? prisma.pelanggan.count() : 0,
 
-      prisma.pelanggan.count(),
+      canSeeFinance ? prisma.user.count() : 0,
 
       prisma.obat.count(),
 
-      prisma.obat.findMany({
-        where: { stok: { lte: 10 } },
-        take: 5,
-        orderBy: { stok: 'asc' }
-      }),
+      (isOwner || isAdmin || isApoteker)
+        ? prisma.obat.findMany({ 
+            where: { stok: { lte: 10 } }, 
+            take: 5, 
+            orderBy: { stok: 'asc' } 
+          })
+        : [],
 
-      prisma.penjualan.findMany({
-        take: 5,
-        orderBy: { tgl_penjualan: 'desc' },
-        include: { pelanggan: true }
-      }),
-
-      prisma.penjualan.findMany({
-        where: {
-          tgl_penjualan: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 7))
-          }
-        },
-        select: {
-          tgl_penjualan: true,
-          total_bayar: true
-        }
-      })
+      canSeeOps
+        ? prisma.penjualan.findMany({ 
+            take: 5, 
+            orderBy: { id: 'desc' },
+            include: { pelanggan: true } 
+          })
+        : []
     ]);
 
-    return NextResponse.json({
+    const result = {
       success: true,
-      message: "Data Dashboard Berhasil Dimuat",
       data: {
         cards: {
-          revenue: totalPendapatan._sum.total_bayar || 0,
-          total_sales: jumlahTransaksi,
-          total_users: jumlahPelanggan,
+          revenue: canSeeFinance ? (totalPendapatan._sum.total_bayar || 0) : 0,
+          total_sales: canSeeOps ? jumlahTransaksi : 0,
+          total_customers: canSeeFinance ? jumlahPelanggan : 0,
+          total_staff: canSeeFinance ? jumlahStaff : 0,
           total_products: jumlahObat,
         },
         alerts: {
           low_stock: stokMenipis,
         },
         recent_orders: transaksiTerbaru,
-        chart_data: grafikMingguan
+        role_access: {
+          current_role: role,
+          is_finance_authorized: canSeeFinance
+        }
       }
-    });
+    };
+
+    return NextResponse.json(serialize(result));
 
   } catch (error) {
-    console.error("Dashboard Error:", error);
-    return NextResponse.json({ success: false, message: "Gagal memuat dashboard" }, { status: 500 });
+    console.error("Dashboard API Error:", error);
+    return NextResponse.json(
+      { success: false, message: "Terjadi kesalahan pada server" }, 
+      { status: 500 }
+    );
   }
 }

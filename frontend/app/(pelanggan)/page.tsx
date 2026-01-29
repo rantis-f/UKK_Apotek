@@ -21,13 +21,10 @@ export default function LandingPage() {
       <Navbar />
       
       <main>
-        {/* 1. Hero Banner */}
         <Hero />
 
-        {/* 2. Tiga Kotak Fitur Layanan */}
         <ServiceFeatures />
 
-        {/* 3. Katalog Produk */}
         <section className="container mx-auto px-4 py-10">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -46,7 +43,6 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-
       <Footer />
     </div>
   );

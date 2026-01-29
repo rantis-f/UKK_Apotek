@@ -11,7 +11,6 @@ export async function middleware(request: NextRequest) {
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 
-
   if (request.method === "OPTIONS") {
     return NextResponse.json({}, { headers: corsHeaders });
   }
@@ -37,26 +36,37 @@ export async function middleware(request: NextRequest) {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    console.error("❌ FATAL: JWT_SECRET belum di-setting di file .env!");
     return NextResponse.json(
-      { success: false, message: "Server Error: Konfigurasi keamanan belum lengkap." },
+      { success: false, message: "Server Error: JWT_SECRET belum disetting." },
       { status: 500, headers: corsHeaders }
     );
   }
 
   try {
     const secret = new TextEncoder().encode(jwtSecret);
-    await jwtVerify(token, secret);
-    
-    const response = NextResponse.next();
+
+    const { payload } = await jwtVerify(token, secret);
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-user-id", String(payload.id));
+    requestHeaders.set("x-user-role", String(payload.role));
+    requestHeaders.set("x-user-email", String(payload.email));
+
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+
     Object.entries(corsHeaders).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
+
     return response;
 
   } catch (error) {
     return NextResponse.json(
-      { success: false, message: "Akses Ditolak: Token kadaluarsa atau tidak valid!" },
+      { success: false, message: "Akses Ditolak: Token kadaluarsa!" },
       { status: 401, headers: corsHeaders }
     );
   }

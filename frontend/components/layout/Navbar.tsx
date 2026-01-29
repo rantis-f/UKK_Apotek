@@ -1,71 +1,114 @@
 "use client";
 
-import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Pill, ShoppingCart, User, LogOut, Heart } from "lucide-react";
+import {
+    LogOut,
+    ShoppingCart,
+    Heart,
+    User as UserIcon,
+    Bell
+} from "lucide-react";
+import Link from "next/link";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
 
-  return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-      <div className="container mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
-        
-        {/* SISI KIRI: Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0 group">
-          <div className="bg-emerald-600 text-white p-2 rounded-xl shadow-emerald-200 shadow-lg group-hover:scale-110 transition-transform">
-            <Pill className="w-6 h-6" />
-          </div>
-          <span className="font-bold text-xl tracking-tight text-emerald-900">Ran_Store</span>
-        </Link>
+    if (!user) return null;
 
-        {/* SISI TENGAH: Menu Navigasi (Opsional, pengganti Search) */}
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-          <Link href="/" className="hover:text-emerald-600 transition-colors">Beranda</Link>
-          <Link href="/catalogue" className="hover:text-emerald-600 transition-colors">Produk</Link>
-          <Link href="/promo" className="hover:text-emerald-600 transition-colors">Promo</Link>
-          <Link href="/about" className="hover:text-emerald-600 transition-colors">Tentang Kami</Link>
-        </div>
+    const displayName = user.nama_pelanggan || user.name || "User";
+    const displayRole = user.jabatan || "MEMBER";
 
-        {/* SISI KANAN: Action Buttons */}
-        <div className="flex items-center gap-3 md:gap-4">
-          {/* Wishlist/Heart (Tambahan biar gak sepi) */}
-          <Button variant="ghost" size="icon" className="hidden sm:flex text-gray-500 hover:text-red-500">
-            <Heart className="w-5 h-5" />
-          </Button>
+    const initials = displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
 
-          {/* Keranjang */}
-          <Button variant="ghost" size="icon" className="relative text-gray-600 hover:bg-emerald-50 hover:text-emerald-600">
-            <ShoppingCart className="w-6 h-6" />
-            <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-600 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
-              0
-            </span>
-          </Button>
+    return (
+        <nav className="border-b bg-white shadow-sm sticky top-0 z-50">
+            <div className="container mx-auto px-4 h-20 flex items-center justify-between">
 
-          {/* User Auth Section */}
-          <div className="h-8 w-[1px] bg-gray-200 mx-2 hidden sm:block"></div>
+                {/* POJOK KIRI: LOGO */}
+                <div className="flex items-center gap-12">
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="bg-emerald-600 p-2 rounded-xl text-white">
+                            <span className="font-bold text-xl italic">💊</span>
+                        </div>
+                        <span className="font-bold text-xl text-emerald-900 tracking-tight">Ran_Store</span>
+                    </Link>
 
-          {user ? (
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:block text-right">
-                <p className="text-sm font-bold text-gray-800 leading-none mb-1">{user.name}</p>
-                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Member</p>
-              </div>
-              <Button onClick={logout} variant="outline" size="sm" className="border-red-100 text-red-500 hover:bg-red-50 rounded-full px-4">
-                <LogOut className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Keluar</span>
-              </Button>
+                    {/* MENU TENGAH */}
+                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-500">
+                        <Link href="/" className="hover:text-emerald-600 transition-colors">Beranda</Link>
+                        <Link href="/produk" className="hover:text-emerald-600 transition-colors">Produk</Link>
+                        <Link href="/promo" className="hover:text-emerald-600 transition-colors">Promo</Link>
+                        <Link href="/tentang" className="hover:text-emerald-600 transition-colors">Tentang Kami</Link>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-4 text-gray-400 mr-2">
+                        <Bell className="w-5 h-5 hover:text-emerald-600 cursor-pointer" />
+                        <Heart className="w-5 h-5 hover:text-red-500 cursor-pointer" />
+                        <div className="relative">
+                            <ShoppingCart className="w-5 h-5 hover:text-emerald-600 cursor-pointer" />
+                            <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">0</span>
+                        </div>
+                    </div>
+
+                    <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block" />
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger className="outline-none">
+                            <div className="flex items-center group">
+                                <Avatar className="h-10 w-10 border-2 border-emerald-50">
+                                    <AvatarFallback className="bg-emerald-500 text-white font-bold">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </div>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-xl border-gray-100">
+                            <DropdownMenuLabel className="font-normal p-4">
+                                <div className="flex flex-col space-y-1">
+                                    <p className="text-sm font-bold leading-none text-gray-900">{displayName}</p>
+                                    <p className="text-xs leading-none text-gray-500">{user.email}</p>
+                                </div>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem asChild className="cursor-pointer p-3 focus:bg-emerald-50 focus:text-emerald-600">
+                                <Link href="/profile" className="flex items-center w-full">
+                                    <UserIcon className="mr-3 h-4 w-4" />
+                                    <span>Profile Saya</span>
+                                </Link>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            <DropdownMenuItem
+                                onClick={logout}
+                                className="cursor-pointer p-3 text-red-600 focus:bg-red-50 focus:text-red-600"
+                            >
+                                <LogOut className="mr-3 h-4 w-4" />
+                                <span>Log out</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                </div>
             </div>
-          ) : (
-            <Link href="/login">
-              <Button className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 shadow-md rounded-full px-6 transition-all hover:-translate-y-0.5">
-                <User className="w-4 h-4 mr-2" /> Masuk
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
+        </nav>
+    );
 }
