@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/home/Hero";
@@ -10,29 +12,50 @@ import { ChevronRight, Loader2, PackageSearch } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { user, token, loading: authLoading } = useAuth();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  useEffect(() => {
+    if (!authLoading && user && token) {
+      const role = user.role?.toLowerCase();
+
+      if (role === "admin" || role === "pemilik") {
+        router.push("/dashboard");
+      }
+      else if (role === "apoteker" || role === "kasir") {
+        router.push("/dashboard");
+      }
+    }
+  }, [user, token, authLoading, router]);
 
   useEffect(() => {
     const fetchTopProducts = async () => {
       try {
         const res = await fetch(`${API_URL}/obat?limit=4`);
         const json = await res.json();
-
-        if (json.success) {
-          setProducts(json.data);
-        }
+        if (json.success) setProducts(json.data);
       } catch (error) {
         console.error("Gagal mengambil produk:", error);
       } finally {
-        setLoading(false);
+        setProductsLoading(false);
       }
     };
 
     if (API_URL) fetchTopProducts();
   }, [API_URL]);
+
+  if (authLoading || (user && token)) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-white">
+        <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mb-4" />
+        <p className="text-gray-500 font-medium animate-pulse">Menyiapkan akses Anda...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -53,7 +76,7 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {loading ? (
+          {productsLoading ? (
             <div className="flex h-60 flex-col items-center justify-center text-emerald-600">
               <Loader2 className="h-10 w-10 animate-spin mb-2" />
               <p className="text-gray-400 text-sm italic font-medium">Memuat produk terbaik...</p>

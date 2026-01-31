@@ -2,7 +2,6 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
 import { headers } from "next/headers";
 
-// Helper untuk BigInt agar tidak error saat return JSON
 const serialize = (data: any) => {
   return JSON.parse(
     JSON.stringify(data, (key, value) =>
@@ -11,7 +10,7 @@ const serialize = (data: any) => {
   );
 };
 
-// --- GET: TETAP PUBLIK (Untuk Landing Page & Katalog) ---
+// GET: Publik
 export async function GET() {
   try {
     const obat = await prisma.obat.findMany({
@@ -19,35 +18,34 @@ export async function GET() {
       orderBy: { id: 'desc' },
     });
 
-    return NextResponse.json(serialize({
-      success: true,
-      data: obat,
-    }));
+    return NextResponse.json(serialize({ success: true, data: obat }));
   } catch (error) {
-    return NextResponse.json({ success: false, message: "Gagal mengambil data" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Gagal memuat katalog" }, { status: 500 });
   }
 }
 
-// --- POST: HARUS PRIVAT (Hanya Admin/Staff) ---
+// POST: Privat & Terproteksi
 export async function POST(request: NextRequest) {
   try {
-    // 1. Cek Token/Role dari Header (yang dikirim oleh Middleware kamu)
     const headerList = await headers();
-    const role = headerList.get("x-user-role"); 
+    const role = headerList.get("x-user-role"); // Pastikan ini di-inject oleh Middleware yang valid
 
-    // 2. Validasi: Hanya staff yang boleh tambah obat
-    const staffRoles = ["admin", "pemilik", "apoteker"];
-    if (!role || !staffRoles.includes(role)) {
+    const authorizedRoles = ["admin", "pemilik", "apoteker"];
+    
+    if (!role || !authorizedRoles.includes(role.toLowerCase())) {
       return NextResponse.json(
-        { success: false, message: "Akses Ditolak: Anda bukan Admin/Staff!" },
+        { success: false, message: "Unauthorized: Area khusus staff!" },
         { status: 403 }
       );
     }
 
     const body = await request.json();
-    const { nama_obat, idjenis, harga_jual, stok, foto1 } = body;
+    const { nama_obat, idjenis, harga_jual, stok, foto1, deskripsi_obat } = body;
 
-    // ... (Validasi input tetap sama)
+    // Tambahkan validasi dasar di sini (Cybersecurity 101: Never trust user input)
+    if (!nama_obat || !idjenis || !harga_jual) {
+      return NextResponse.json({ success: false, message: "Data tidak lengkap" }, { status: 400 });
+    }
 
     const newObat = await prisma.obat.create({
       data: {
@@ -56,18 +54,17 @@ export async function POST(request: NextRequest) {
         harga_jual: Number(harga_jual),
         stok: Number(stok) || 0,
         foto1: foto1 || "default.jpg",
-        deskripsi_obat: body.deskripsi_obat || "",
+        deskripsi_obat: deskripsi_obat || "",
       },
     });
 
     return NextResponse.json(serialize({
       success: true,
-      message: "Obat berhasil ditambahkan!",
+      message: "Data obat berhasil disimpan",
       data: newObat,
     }), { status: 201 });
 
   } catch (error) {
-    console.error("Error create obat:", error);
-    return NextResponse.json({ success: false, message: "Gagal menambah obat" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan sistem" }, { status: 500 });
   }
 }
