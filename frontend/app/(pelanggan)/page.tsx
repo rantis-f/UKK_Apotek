@@ -8,98 +8,118 @@ import Footer from "@/components/layout/Footer";
 import Hero from "@/components/home/Hero";
 import ServiceFeatures from "@/components/home/ServiceFeatures";
 import ProductCard from "@/components/products/ProductCard";
-import { ChevronRight, Loader2, PackageSearch } from "lucide-react";
+import { ChevronRight, Loader2, PackageSearch, Sparkles, Flame } from "lucide-react";
 import Link from "next/link";
 
 export default function LandingPage() {
   const router = useRouter();
   const { user, token, loading: authLoading } = useAuth();
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  
+  const [bestSellers, setBestSellers] = useState([]);
+  const [latestProducts, setLatestProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  useEffect(() => {
-    if (!authLoading && user && token) {
-      const role = user.role?.toLowerCase();
+  useEffect(() => { setIsHydrated(true); }, []);
 
-      if (role === "admin" || role === "pemilik") {
-        router.push("/dashboard");
-      }
-      else if (role === "apoteker" || role === "kasir") {
+  useEffect(() => {
+    if (isHydrated && !authLoading && user && token) {
+      if (["admin", "pemilik", "apoteker", "kasir"].includes(user.role?.toLowerCase())) {
         router.push("/dashboard");
       }
     }
-  }, [user, token, authLoading, router]);
+  }, [user, token, authLoading, router, isHydrated]);
 
   useEffect(() => {
-    const fetchTopProducts = async () => {
+    const fetchHomeData = async () => {
       try {
-        const res = await fetch(`${API_URL}/obat?limit=4`);
-        const json = await res.json();
-        if (json.success) setProducts(json.data);
+        const [resBest, resLatest] = await Promise.all([
+          fetch(`${API_URL}/obat?limit=4&sort=popular`),
+          fetch(`${API_URL}/obat?limit=4&sort=latest`)
+        ]);
+        
+        const bestJson = await resBest.json();
+        const latestJson = await resLatest.json();
+        
+        if (bestJson.success) setBestSellers(bestJson.data.slice(0, 4));
+        if (latestJson.success) setLatestProducts(latestJson.data.slice(0, 4));
       } catch (error) {
-        console.error("Gagal mengambil produk:", error);
+        console.error("Gagal load data:", error);
       } finally {
-        setProductsLoading(false);
+        setLoading(false);
       }
     };
 
-    if (API_URL) fetchTopProducts();
-  }, [API_URL]);
+    if (API_URL && isHydrated) fetchHomeData();
+  }, [API_URL, isHydrated]);
 
-  if (authLoading || (user && token)) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-white">
-        <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mb-4" />
-        <p className="text-gray-500 font-medium animate-pulse">Menyiapkan akses Anda...</p>
-      </div>
-    );
-  }
+  if (!isHydrated || authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-600" /></div>;
 
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
-
-      <main>
+      <main className="animate-in fade-in duration-700">
         <Hero />
         <ServiceFeatures />
 
-        <section className="container mx-auto px-4 py-10">
-          <div className="flex items-center justify-between mb-8">
+        <section className="container mx-auto px-6 py-16">
+          <div className="flex justify-between items-end mb-10">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Produk Terlaris</h2>
-              <p className="text-gray-500 text-sm">Pilihan terbaik untuk kesehatan Anda</p>
+              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                <Flame className="text-orange-500 w-6 h-6" /> Paling Banyak Dicari
+              </h2>
+              <p className="text-gray-500 text-sm">Produk kesehatan andalan pelanggan kami.</p>
             </div>
-            <Link href="/catalogue" className="text-emerald-600 font-bold flex items-center gap-1 hover:underline text-sm md:text-base">
+            <Link href="/catalogue" className="text-emerald-600 font-bold text-sm hover:underline flex items-center gap-1">
               Lihat Semua <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {productsLoading ? (
-            <div className="flex h-60 flex-col items-center justify-center text-emerald-600">
-              <Loader2 className="h-10 w-10 animate-spin mb-2" />
-              <p className="text-gray-400 text-sm italic font-medium">Memuat produk terbaik...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {bestSellers.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                {...product}
+                name={product.nama_obat}
+                price={product.harga_jual}
+                category={product.jenis_obat?.jenis}
+                image={product.foto1}
+                badge="HOT"
+              />
+            ))}
+          </div>
+        </section>
+
+        <div className="container mx-auto px-6"><hr className="border-gray-100" /></div>
+
+        <section className="container mx-auto px-6 py-16">
+          <div className="flex justify-between items-end mb-10">
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                <Sparkles className="text-emerald-500 w-6 h-6" /> Stok Terbaru
+              </h2>
+              <p className="text-gray-500 text-sm">Baru saja tiba di rak apotek kami.</p>
             </div>
-          ) : products.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-              {products.map((product: any) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.nama_obat}
-                  price={product.harga_jual}
-                  category={product.jenis_obat?.jenis || "Umum"}
-                  image="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-              <PackageSearch className="mx-auto h-12 w-12 text-gray-300 mb-2" />
-              <p className="text-gray-500 font-medium">Belum ada produk yang tersedia saat ini.</p>
-            </div>
-          )}
+            <Link href="/catalogue" className="text-emerald-600 font-bold text-sm hover:underline flex items-center gap-1">
+              Lihat Semua <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {latestProducts.map((product: any) => (
+              <ProductCard
+                key={product.id}
+                {...product}
+                name={product.nama_obat}
+                price={product.harga_jual}
+                category={product.jenis_obat?.jenis}
+                image={product.foto1}
+                badge="NEW"
+              />
+            ))}
+          </div>
         </section>
       </main>
       <Footer />

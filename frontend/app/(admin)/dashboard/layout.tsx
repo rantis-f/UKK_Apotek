@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,13 +38,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const displayName = user?.name || user?.nama_pelanggan || "User";
 
-  // 1. Logika Menu Berbasis Role (RBAC)
   const menus = useMemo(() => {
-    // FIX: Tambahkan || "" agar TypeScript tidak protes soal 'undefined'
     const role = user?.role || ""; 
     const baseMenu = [{ name: "Dashboard", href: "/dashboard", icon: LayoutDashboard }];
 
-    // Menu khusus Pelanggan
     if (role === "pelanggan") {
       return [
         ...baseMenu,
@@ -53,15 +50,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ];
     }
 
-    // Menu Staff Internal
     const items = [...baseMenu];
 
-    // Kasir, Admin, & Pemilik bisa akses transaksi
     if (["kasir", "admin", "pemilik"].includes(role)) {
       items.push({ name: "Kasir", href: "/dashboard/kasir", icon: ShoppingCart });
     }
 
-    // Apoteker, Admin, & Pemilik kelola barang
     if (["apoteker", "admin", "pemilik"].includes(role)) {
       items.push(
         { name: "Data Obat", href: "/dashboard/obat", icon: Pill },
@@ -70,7 +64,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       );
     }
 
-    // Admin & Pemilik kelola data sensitif
     if (["admin", "pemilik"].includes(role)) {
       items.push(
         { name: "Data Pelanggan", href: "/dashboard/pelanggan", icon: Users },
@@ -83,7 +76,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return items;
   }, [user?.role]);
 
-  // 2. Helper Judul Header Dinamis
   const getPageTitle = () => {
     const segment = pathname.split("/").pop();
     if (segment === "dashboard") return "Overview Statistik";
@@ -97,14 +89,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex flex-col h-full bg-zinc-950 text-white border-r border-zinc-800">
       <div className="h-16 flex items-center px-6 border-b border-zinc-800/50">
         <Pill className="w-6 h-6 text-emerald-500 mr-2" />
-        <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+        <span className="font-bold text-lg tracking-tight bg-linear-to-r from-white to-zinc-400 bg-clip-text text-transparent">
           {user?.role === "pelanggan" ? "Ran_Apotek" : "Ran_Admin"}
         </span>
       </div>
 
       <div className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
         {menus.map((menu) => {
-          // 3. Logika Active Link Pintar (Mendukung Sub-halaman)
           const isActive = pathname === menu.href || (menu.href !== "/dashboard" && pathname.startsWith(menu.href));
           
           return (
@@ -120,17 +111,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           );
         })}
-      </div>
-
-      <div className="p-4 border-t border-zinc-800/50">
-        <Button 
-          variant="ghost" 
-          onClick={logout}
-          className="w-full justify-start text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-        >
-          <LogOut className="w-5 h-5 mr-3" />
-          Log Out
-        </Button>
       </div>
     </div>
   );

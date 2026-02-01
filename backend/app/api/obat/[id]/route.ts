@@ -1,97 +1,100 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
-import { headers } from "next/headers";
+import { v2 as cloudinary } from "cloudinary";
 
-const serialize = (data: any) => {
-  return JSON.parse(
-    JSON.stringify(data, (key, value) =>
-      typeof value === "bigint" ? value.toString() : value
-    )
-  );
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const getPublicId = (url: string | null) => {
+  if (!url || url.includes("default.jpg") || !url.startsWith("http")) return null;
+
+  const parts = url.split("/");
+  const fileWithExtension = parts[parts.length - 1];
+  const publicId = fileWithExtension.split(".")[0];
+
+  return `apotek/obat/${publicId}`;
 };
 
-async function getParams(context: any) {
-  return await context.params;
-}
+const serialize = (data: any) => {
+  return JSON.parse(JSON.stringify(data, (k, v) => typeof v === "bigint" ? v.toString() : v));
+};
 
-export async function GET(request: Request, context: any) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await getParams(context);
-
+    const { id } = await params;
     const obat = await prisma.obat.findUnique({
       where: { id: BigInt(id) },
       include: { jenis_obat: true },
     });
-
-    if (!obat) {
-      return NextResponse.json({ success: false, message: "Obat tidak ditemukan" }, { status: 404 });
-    }
-
+    if (!obat) return NextResponse.json({ success: false, message: "Obat tidak ditemukan" }, { status: 404 });
     return NextResponse.json(serialize({ success: true, data: obat }));
   } catch (error) {
     return NextResponse.json({ success: false, message: "Error server" }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, context: any) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const headerList = await headers();
-    const role = headerList.get("x-user-role");
-    const staffRoles = ["admin", "pemilik", "apoteker"];
+    const { id } = await params;
+    const formData = await request.formData();
+    const imageFile = formData.get("foto1") as File | null;
 
-    if (!role || !staffRoles.includes(role.toLowerCase())) {
-      return NextResponse.json({ success: false, message: "Akses ditolak!" }, { status: 403 });
+    const existing = await prisma.obat.findUnique({ where: { id: BigInt(id) } });
+    if (!existing) return NextResponse.json({ message: "Data tidak ditemukan" }, { status: 404 });
+
+    let imageUrl = existing.foto1;
+
+    if (imageFile && imageFile instanceof File && imageFile.size > 0) {
+      const oldPublicId = getPublicId(existing.foto1);
+      if (oldPublicId) {
+        await cloudinary.uploader.destroy(oldPublicId);
+      }
+
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      const upload: any = await new Promise((res, rej) => {
+        cloudinary.uploader.upload_stream(
+          { upload_preset: process.env.CLOUDINARY_PRESET },
+          (err, result) => err ? rej(err) : res(result)
+        ).end(buffer);
+      });
+      imageUrl = upload.secure_url;
     }
 
-    const { id } = await getParams(context);
-    const body = await request.json();
-
-    const updatedObat = await prisma.obat.update({
+    const updated = await prisma.obat.update({
       where: { id: BigInt(id) },
       data: {
-        nama_obat: body.nama_obat,
-        harga_jual: body.harga_jual ? Number(body.harga_jual) : undefined,
-        stok: body.stok ? Number(body.stok) : undefined,
-        idjenis: body.idjenis ? BigInt(body.idjenis) : undefined,
-        deskripsi_obat: body.deskripsi_obat,
-        foto1: body.foto1,
+        nama_obat: (formData.get("nama_obat") as string) || undefined,
+        harga_jual: formData.get("harga_jual") ? Number(formData.get("harga_jual")) : undefined,
+        stok: formData.get("stok") ? Number(formData.get("stok")) : undefined,
+        idjenis: formData.get("idjenis") ? BigInt(formData.get("idjenis") as string) : undefined,
+        deskripsi_obat: (formData.get("deskripsi_obat") as string) || undefined,
+        foto1: imageUrl,
       },
     });
 
-    return NextResponse.json(serialize({
-      success: true,
-      message: "Obat berhasil diupdate!",
-      data: updatedObat,
-    }));
+    return NextResponse.json(serialize({ success: true, message: "Berhasil diupdate", data: updated }));
   } catch (error) {
-    return NextResponse.json({ success: false, message: "Gagal update data" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Gagal update" }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, context: any) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
-    const headerList = await headers();
-    const role = headerList.get("x-user-role");
+    const { id } = await params;
+    const existing = await prisma.obat.findUnique({ where: { id: BigInt(id) } });
 
-    if (role?.toLowerCase() !== "admin" && role?.toLowerCase() !== "pemilik") {
-      return NextResponse.json({ success: false, message: "Hanya Admin/Pemilik yang bisa menghapus!" }, { status: 403 });
+    if (existing) {
+      const publicId = getPublicId(existing.foto1);
+      if (publicId) await cloudinary.uploader.destroy(publicId);
+
+      await prisma.obat.delete({ where: { id: BigInt(id) } });
     }
 
-    const { id } = await getParams(context);
-
-    await prisma.obat.delete({
-      where: { id: BigInt(id) },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: "Obat berhasil dihapus!",
-    });
+    return NextResponse.json({ success: true, message: "Data & Foto terhapus" });
   } catch (error) {
-    // Pesan error ini bagus untuk handle Foreign Key Constraint
-    return NextResponse.json({
-      success: false,
-      message: "Gagal hapus: Obat mungkin sudah tercatat dalam transaksi"
-    }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Gagal hapus data" }, { status: 500 });
   }
 }

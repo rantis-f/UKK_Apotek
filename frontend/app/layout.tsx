@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Apotek Digital",
+  title: "Ran_Apotek | Manajemen Modern",
   description: "Sistem Informasi Manajemen Apotek Modern",
 };
 
@@ -25,11 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
-        <Toaster />
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );
