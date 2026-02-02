@@ -40,11 +40,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Ambil data via FormData
     const formData = await request.formData();
     const nama_jenis = formData.get("nama_jenis") as string;
     const deskripsi_jenis = formData.get("deskripsi_jenis") as string;
-    const imageFile = formData.get("image") as File; // 'image' adalah name di input frontend
+    const imageFile = formData.get("image") as File;
 
     if (!nama_jenis) {
       return NextResponse.json({ success: false, message: "Nama jenis wajib diisi" }, { status: 400 });
@@ -52,7 +51,6 @@ export async function POST(request: NextRequest) {
 
     let image_url = "";
 
-    // 2. Proses Upload ke Cloudinary jika ada file
     if (imageFile && imageFile.size > 0) {
       const arrayBuffer = await imageFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
@@ -71,12 +69,11 @@ export async function POST(request: NextRequest) {
       image_url = uploadResponse.secure_url;
     }
 
-    // 3. Simpan ke Database
     const data = await prisma.jenisObat.create({
       data: {
         jenis: nama_jenis,
         deskripsi_jenis: deskripsi_jenis || "",
-        image_url: image_url, // Link dari Cloudinary masuk sini
+        image_url: image_url,
       }
     });
     

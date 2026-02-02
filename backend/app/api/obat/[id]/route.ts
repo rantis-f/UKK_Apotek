@@ -2,6 +2,22 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
 import { v2 as cloudinary } from "cloudinary";
 
+// 1. Konfigurasi Cloudinary
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// 2. Helper: Serialize BigInt agar tidak error saat jadi JSON
+const serialize = (data: any) => {
+  return JSON.parse(
+    JSON.stringify(data, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
+
 const getPublicIdFromUrl = (url: string) => {
   if (!url || url === "default.jpg" || url.includes("default.jpg")) return null;
   const parts = url.split("/");
@@ -11,6 +27,37 @@ const getPublicIdFromUrl = (url: string) => {
 
 async function getParams(context: any) { return await context.params; }
 
+// ==========================================
+// [GET] - AMBIL DETAIL OBAT (SOLUSI ERROR JSON)
+// ==========================================
+export async function GET(request: NextRequest, context: any) {
+  try {
+    const { id } = await getParams(context);
+
+    const data = await prisma.obat.findUnique({
+      where: { id: BigInt(id) },
+      include: {
+        jenis_obat: true // Penting agar nama kategori muncul di detail
+      }
+    });
+
+    if (!data) {
+      return NextResponse.json({ success: false, message: "Obat tidak ditemukan" }, { status: 404 });
+    }
+
+    return NextResponse.json(serialize({
+      success: true,
+      data
+    }));
+  } catch (error: any) {
+    console.error("GET DETAIL ERROR:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
+// ==========================================
+// [PUT] - UPDATE OBAT & FOTO
+// ==========================================
 export async function PUT(request: NextRequest, context: any) {
   try {
     const { id } = await getParams(context);
@@ -48,12 +95,15 @@ export async function PUT(request: NextRequest, context: any) {
     }
 
     const data = await prisma.obat.update({ where: { id: BigInt(id) }, data: updateData });
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(serialize({ success: true, data }));
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
+// ==========================================
+// [DELETE] - HAPUS OBAT & FOTO
+// ==========================================
 export async function DELETE(request: NextRequest, context: any) {
   try {
     const { id } = await getParams(context);

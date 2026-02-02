@@ -1,13 +1,12 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Pill, Plus, Activity, HeartPulse } from "lucide-react"; // 👈 Perbaiki di sini
+import { Pill, Plus, Activity, HeartPulse } from "lucide-react";
 
 export default function Hero() {
     return (
         <section className="container mx-auto px-4 py-6">
-            <div className="relative rounded-3xl overflow-hidden bg-emerald-900 h-[320px] md:h-[450px] flex items-center">
+            <div className="relative rounded-3xl overflow-hidden bg-emerald-900 h-80 md:h-112.5 flex items-center">
 
-                {/* Dekorasi Background */}
                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
 
                 <div className="relative z-10 px-8 md:px-20 space-y-4 md:space-y-6 max-w-2xl text-white">
@@ -31,9 +30,7 @@ export default function Hero() {
                     </Button>
                 </div>
 
-
-                {/* KOMPOSISI ICON LUCIDE */}
-                <div className="hidden lg:flex absolute right-20 inset-y-0 items-center justify-center w-[400px]">
+                <div className="hidden lg:flex absolute right-20 inset-y-0 items-center justify-center w-100">
                     <div className="relative">
                         <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-[100px] animate-pulse"></div>
 
@@ -41,7 +38,6 @@ export default function Hero() {
                             <Plus className="w-32 h-32 text-emerald-400 opacity-80" strokeWidth={1.5} />
                         </div>
 
-                        {/* Icon Melayang */}
                         <div className="absolute -top-10 -right-10 bg-white p-4 rounded-2xl shadow-xl animate-bounce" style={{ animationDuration: '3s' }}>
                             <Pill className="w-10 h-10 text-emerald-600" />
                         </div>

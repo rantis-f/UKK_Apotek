@@ -9,7 +9,6 @@ export default function Footer() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           
-          {/* Kolom 1: Logo & Brand */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
               <div className="bg-emerald-600 text-white p-1.5 rounded-lg shadow-emerald-200 shadow-md">
@@ -33,7 +32,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Kolom 2: Belanja */}
           <div>
             <h4 className="font-bold text-gray-900 mb-6">Kategori Belanja</h4>
             <ul className="space-y-4 text-sm text-gray-500">
@@ -44,7 +42,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Kolom 3: Perusahaan */}
           <div>
             <h4 className="font-bold text-gray-900 mb-6">Bantuan & Info</h4>
             <ul className="space-y-4 text-sm text-gray-500">
@@ -55,7 +52,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Kolom 4: Kontak */}
           <div>
             <h4 className="font-bold text-gray-900 mb-6">Hubungi Kami</h4>
             <ul className="space-y-4 text-sm text-gray-500">
@@ -75,7 +71,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Copyright Section */}
         <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-400">
             &copy; 2026 Ran_Store Healthcare. Seluruh hak cipta dilindungi.

@@ -188,7 +188,6 @@ export default function ObatForm({
               </div>
             </div>
 
-            {/* Harga & Stok */}
             <div className="space-y-4">
               <div className="space-y-1">
                 <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Harga Jual (Rp)</Label>

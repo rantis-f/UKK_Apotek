@@ -8,9 +8,6 @@ export default function LogoutPage() {
   const { logout } = useAuth();
 
   useEffect(() => {
-    // 1. Jalankan fungsi logout dari useAuth
-    // 2. Fungsi ini akan menghapus Cookie & Zustand State
-    // 3. Lalu otomatis redirect ke /login
     const performLogout = async () => {
       await logout();
     };

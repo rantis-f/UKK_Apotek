@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/home/Hero";
 import ServiceFeatures from "@/components/home/ServiceFeatures";
@@ -76,7 +75,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
       <main className="animate-in fade-in duration-700">
         <Hero />
         <ServiceFeatures />

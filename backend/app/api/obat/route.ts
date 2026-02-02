@@ -3,12 +3,14 @@ import prisma from "@/lib/db";
 import { headers } from "next/headers";
 import { v2 as cloudinary } from "cloudinary";
 
+// 1. Konfigurasi Cloudinary
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// 2. Helper: Serialize BigInt
 const serialize = (data: any) => {
   return JSON.parse(
     JSON.stringify(data, (key, value) =>
@@ -17,42 +19,82 @@ const serialize = (data: any) => {
   );
 };
 
+// ==========================================
+// [GET] - AMBIL DATA (STABIL & DINAMIS)
+// ==========================================
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = searchParams.get("limit");
-    const search = searchParams.get("q") || "";
+    const q = searchParams.get("q") || "";
+    const idjenis = searchParams.get("idjenis");
+    
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "12");
+    const skip = (page - 1) * limit;
 
-    const queryOptions: any = {
-      where: { nama_obat: { contains: search } },
-      include: { jenis_obat: true },
-      orderBy: { id: 'desc' },
-    };
+    const sortParam = searchParams.get("sort") || "desc";
+    let orderBy: any = { id: 'desc' };
+    if (sortParam === "price_asc") orderBy = { harga_jual: 'asc' };
+    if (sortParam === "price_desc") orderBy = { harga_jual: 'desc' };
+    if (sortParam === "asc") orderBy = { id: 'asc' };
 
-    if (limit && !isNaN(parseInt(limit))) {
-      queryOptions.take = parseInt(limit);
+    // --- PERBAIKAN LOGIKA DISINI ---
+    const where: any = {};
+
+    // Hanya tambahkan filter nama jika user beneran ngetik sesuatu
+    if (q && q.trim() !== "") {
+      where.nama_obat = { contains: q };
     }
 
-    const obat = await prisma.obat.findMany(queryOptions);
-    return NextResponse.json(serialize({ success: true, data: obat }));
+    // Hanya tambahkan filter kategori jika user beneran milih
+    if (idjenis && idjenis.trim() !== "" && idjenis !== "null" && idjenis !== "undefined") {
+      where.idjenis = BigInt(idjenis);
+    }
+
+    // Ambil data dan hitung total secara paralel
+    const [obat, total] = await Promise.all([
+      prisma.obat.findMany({
+        where, // Jika q dan idjenis kosong, where jadi {} (artinya ambil semua)
+        include: { jenis_obat: true },
+        orderBy,
+        take: limit,
+        skip: skip,
+      }),
+      prisma.obat.count({ where })
+    ]);
+
+    return NextResponse.json(serialize({ 
+      success: true, 
+      data: obat,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    }));
   } catch (error: any) {
+    console.error("GET ERROR:", error.message);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
+// ==========================================
+// [POST] - TAMBAH OBAT BARU (ROLE PROTECTED)
+// ==========================================
 export async function POST(request: NextRequest) {
   try {
     const headerList = await headers();
     const role = headerList.get("x-user-role");
+    
     if (role !== 'admin' && role !== 'pemilik' && role !== 'apoteker') {
       return NextResponse.json({ success: false, message: "Forbidden!" }, { status: 403 });
     }
 
     const formData = await request.formData();
     const photoFields = ["foto1", "foto2", "foto3"];
-    let imageUrls: any = { foto1: "default.jpg", foto2: "default.jpg", foto3: "default.jpg" };
+    let imageUrls: any = {};
 
-    // Proses upload untuk ketiga foto
     for (const field of photoFields) {
       const imageFile = formData.get(field) as File;
       if (imageFile && imageFile.size > 0) {
@@ -61,7 +103,10 @@ export async function POST(request: NextRequest) {
 
         const uploadResponse: any = await new Promise((resolve, reject) => {
           cloudinary.uploader.upload_stream(
-            { upload_preset: process.env.CLOUDINARY_PRESET },
+            { 
+              upload_preset: process.env.CLOUDINARY_PRESET,
+              folder: "ran_store_products" 
+            },
             (error, result) => { if (error) reject(error); else resolve(result); }
           ).end(buffer);
         });
@@ -76,12 +121,14 @@ export async function POST(request: NextRequest) {
         harga_jual: Number(formData.get("harga_jual")),
         stok: Number(formData.get("stok")) || 0,
         deskripsi_obat: formData.get("deskripsi_obat") as string || "",
-        ...imageUrls
+        ...imageUrls 
       },
     });
 
     return NextResponse.json(serialize({ success: true, data: newObat }), { status: 201 });
+
   } catch (error: any) {
+    console.error("POST ERROR:", error.message);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
