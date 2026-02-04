@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -22,59 +22,62 @@ const formatRupiah = (number: number) => {
 
 export default function RecentOrders({ orders }: { orders: Order[] }) {
   return (
-    <Card className="shadow-sm border-none bg-white">
-      <CardHeader className="flex flex-row items-center justify-between pb-4">
-        <CardTitle className="text-lg font-bold text-gray-800">Transaksi Terbaru</CardTitle>
+    <Card className="shadow-sm border-none bg-white rounded-[1.5rem] overflow-hidden">
+      <div className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-gray-50">
+        <h3 className="text-sm md:text-lg font-black text-gray-800 uppercase tracking-tight">Transaksi Terbaru</h3>
         <Link href="/dashboard/transaksi">
-          <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 font-semibold">
-            Lihat Semua <ArrowRight className="ml-1 h-4 w-4" />
+          <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 font-black text-[10px] md:text-xs uppercase">
+            Semua <ArrowRight className="ml-1 h-3 w-3 md:h-4 md:w-4" />
           </Button>
         </Link>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] tracking-wider font-bold">
-              <tr>
-                <th className="px-6 py-3">ID</th>
-                <th className="px-6 py-3">Pelanggan</th>
-                <th className="px-6 py-3 text-right">Total</th>
-                <th className="px-6 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {orders?.length > 0 ? (
-                orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-mono text-gray-400 text-xs">#{order.id}</td>
-                    <td className="px-6 py-4 font-medium text-gray-700">
-                      {order.pelanggan?.nama_pelanggan || "Umum"}
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      {formatRupiah(order.total_bayar)}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        order.status_order === 'Selesai' 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {order.status_order}
+      </div>
+
+      <div className="overflow-x-auto scrollbar-hide">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50/50 text-gray-400 uppercase text-[9px] md:text-[10px] tracking-widest font-black">
+            <tr>
+              <th className="px-4 py-3">Pelanggan</th>
+              <th className="px-4 py-3 text-right">Total</th>
+              <th className="px-4 py-3 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {orders?.length > 0 ? (
+              orders.map((order) => (
+                <tr key={order.id} className="hover:bg-gray-50/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] md:text-sm font-bold text-gray-700 leading-tight truncate max-w-[120px] md:max-w-full">
+                        {order.pelanggan?.nama_pelanggan || "Umum"}
                       </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
-                    Belum ada data transaksi.
+                      <span className="text-[9px] font-mono text-gray-400 tracking-tighter">#{order.id}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="text-[11px] md:text-sm font-black text-gray-800">
+                      {formatRupiah(order.total_bayar)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-tighter ${order.status_order?.toLowerCase() === 'selesai'
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : 'bg-amber-50 text-amber-600'
+                      }`}>
+                      {order.status_order}
+                    </span>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={3} className="px-4 py-10 text-center text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                  Belum ada transaksi
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }

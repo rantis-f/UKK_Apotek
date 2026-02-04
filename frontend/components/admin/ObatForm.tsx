@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter 
 } from "@/components/ui/dialog";
@@ -9,9 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from "@/components/ui/select";
-import { Upload, X, Loader2, Pill, Image as ImageIcon } from "lucide-react";
+  Popover, PopoverContent, PopoverTrigger 
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Upload, X, Loader2, Pill, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface ObatFormProps {
@@ -71,7 +78,6 @@ export default function ObatForm({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) return toast.error("File terlalu besar! Maksimal 2MB");
-      
       setSelectedFiles(prev => ({ ...prev, [field]: file }));
       setPreviews(prev => ({ ...prev, [field]: URL.createObjectURL(file) }));
     }
@@ -110,133 +116,145 @@ export default function ObatForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:max-w-150 max-h-[95vh] overflow-y-auto rounded-[2rem] border-none shadow-2xl p-6">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-black text-gray-800 flex items-center gap-2">
-            <Pill className="w-6 h-6 text-emerald-600" />
-            {initialData ? "Edit Detail Obat" : "Tambah Produk Baru"}
+      <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl p-8 md:p-10 bg-white selection:bg-emerald-100">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-2xl font-black text-gray-800 flex items-center gap-3 uppercase tracking-tight">
+            <div className="bg-emerald-600 p-2 rounded-xl text-white shadow-lg shadow-emerald-100">
+              <Pill className="w-6 h-6" />
+            </div>
+            {initialData ? "Update Produk" : "Tambah Obat"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Galeri Foto Produk (Maks. 3)</Label>
-            <div className="grid grid-cols-3 gap-3">
+          {/* --- 1. FOTO PRODUK --- */}
+          <div className="space-y-3">
+            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Galeri Foto Produk</Label>
+            <div className="grid grid-cols-3 gap-4">
               {["foto1", "foto2", "foto3"].map((field, index) => (
-                <div key={field} className="space-y-1">
-                  <div 
-                    className="relative aspect-square border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50 cursor-pointer flex flex-col items-center justify-center overflow-hidden hover:bg-emerald-50/50 transition-all group"
-                  >
-                    {previews[field] && previews[field] !== "default.jpg" ? (
-                      <>
-                        <img src={previews[field]!} alt={`Preview ${index+1}`} className="w-full h-full object-cover" />
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeImage(field); }}
-                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
-                        <Upload className="w-5 h-5 text-gray-300 mb-1" />
-                        <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">
-                          {index === 0 ? "Utama" : `Foto ${index + 1}`}
-                        </span>
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*" 
-                          onChange={(e) => handleFileChange(e, field)} 
-                        />
-                      </label>
-                    )}
-                  </div>
+                <div key={field} className="relative aspect-square border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50 cursor-pointer flex items-center justify-center overflow-hidden hover:bg-emerald-50/30 transition-all group">
+                  {previews[field] && previews[field] !== "default.jpg" ? (
+                    <>
+                      <img src={previews[field]!} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removeImage(field)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
+                      <Upload className="w-5 h-5 text-gray-300 mb-1" />
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">{index === 0 ? "Utama" : `Foto ${index + 1}`}</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, field)} />
+                    </label>
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Nama Obat</Label>
-                <Input 
-                  required 
-                  value={formData.nama_obat} 
-                  onChange={(e) => setFormData({...formData, nama_obat: e.target.value})} 
-                  className="rounded-2xl border-gray-100 bg-gray-50/50" 
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Kategori</Label>
-                <Select value={formData.idjenis} onValueChange={(val) => setFormData({...formData, idjenis: val})}>
-                  <SelectTrigger className="rounded-2xl border-gray-100 bg-gray-50/50">
-                    <SelectValue placeholder="Pilih Kategori" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {categories?.map((cat: any) => (
-                      <SelectItem key={cat.id.toString()} value={cat.id.toString()}>
-                        {cat.jenis}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* --- 2. BARIS 1: NAMA OBAT & KATEGORI (SEBARIS) --- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Nama Produk Obat</Label>
+              <Input 
+                required 
+                value={formData.nama_obat} 
+                onChange={(e) => setFormData({...formData, nama_obat: e.target.value})} 
+                className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-sm" 
+                placeholder="Masukkan nama obat..."
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Harga Jual (Rp)</Label>
-                <Input 
-                  type="number" 
-                  value={formData.harga_jual} 
-                  onChange={(e) => setFormData({...formData, harga_jual: e.target.value})} 
-                  className="rounded-2xl border-gray-100 bg-gray-50/50 font-bold text-emerald-600" 
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Stok Tersedia</Label>
-                <Input 
-                  type="number" 
-                  value={formData.stok} 
-                  onChange={(e) => setFormData({...formData, stok: e.target.value})} 
-                  className="rounded-2xl border-gray-100 bg-gray-50/50" 
-                />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Kategori / Jenis Obat</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    role="combobox"
+                    className="w-full h-12 justify-between rounded-2xl bg-gray-50/50 border-gray-100 font-bold text-gray-700 hover:bg-white transition-all shadow-sm"
+                  >
+                    <span className="truncate">
+                      {formData.idjenis 
+                        ? categories.find((cat) => cat.id.toString() === formData.idjenis)?.jenis 
+                        : "Pilih Kategori..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0 rounded-2xl border-none shadow-2xl overflow-hidden bg-white animate-in zoom-in-95">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        <p className="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] bg-gray-50/50">Daftar Kategori</p>
+                        {categories?.map((cat: any) => (
+                          <CommandItem
+                            key={cat.id}
+                            onSelect={() => setFormData({ ...formData, idjenis: cat.id.toString() })}
+                            className={cn(
+                              "flex items-center justify-between px-4 py-3.5 cursor-pointer",
+                              formData.idjenis === cat.id.toString() 
+                                ? "bg-emerald-600 text-white font-bold" 
+                                : "text-gray-600 hover:bg-emerald-50"
+                            )}
+                          >
+                            <span className="text-[10px] uppercase tracking-widest font-black">{cat.jenis}</span>
+                            {formData.idjenis === cat.id.toString() && <Check className="w-4 h-4 text-white" />}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-[10px] font-black uppercase text-gray-400 ml-1">Deskripsi Produk</Label>
+          {/* --- 3. BARIS 2: HARGA & STOK (SEBARIS) --- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Harga Jual (Rp)</Label>
+              <Input 
+                type="number" 
+                value={formData.harga_jual} 
+                onChange={(e) => setFormData({...formData, harga_jual: e.target.value})} 
+                className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 font-black text-emerald-600 focus:bg-white transition-all shadow-sm" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Stok Tersedia</Label>
+              <Input 
+                type="number" 
+                value={formData.stok} 
+                onChange={(e) => setFormData({...formData, stok: e.target.value})} 
+                className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 font-black text-gray-800 focus:bg-white transition-all shadow-sm" 
+              />
+            </div>
+          </div>
+
+          {/* --- 4. DESKRIPSI --- */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Deskripsi Produk</Label>
             <Textarea 
               value={formData.deskripsi_obat} 
               onChange={(e) => setFormData({...formData, deskripsi_obat: e.target.value})} 
-              className="rounded-2xl border-gray-100 bg-gray-50/50 min-h-24" 
-              placeholder="Jelaskan indikasi, dosis, dan efek samping..."
+              className="rounded-2xl border-gray-100 bg-gray-50/50 min-h-24 focus:bg-white transition-all p-4 font-medium text-sm shadow-sm" 
+              placeholder="Indikasi, dosis, dan efek samping..."
             />
           </div>
 
-          <DialogFooter className="pt-4 gap-3">
-            <Button 
-              type="button" 
-              variant="ghost" 
-              onClick={onClose} 
-              className="rounded-xl font-bold text-gray-400"
-            >
+          <DialogFooter className="pt-6 gap-3">
+            <Button type="button" variant="ghost" onClick={onClose} className="rounded-xl font-bold text-gray-400 hover:text-gray-600 transition-colors">
               Batal
             </Button>
             <Button 
               type="submit" 
               disabled={loading} 
-              className="bg-emerald-600 hover:bg-emerald-700 rounded-2xl font-bold px-8 shadow-lg shadow-emerald-100 h-11 transition-all active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black px-10 h-12 shadow-lg shadow-emerald-100 transition-all active:scale-95 text-[11px] uppercase tracking-[0.15em]"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null} 
-              Simpan Produk
+              SIMPAN PRODUK
             </Button>
           </DialogFooter>
         </form>
