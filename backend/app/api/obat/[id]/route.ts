@@ -2,14 +2,12 @@ import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/db";
 import { v2 as cloudinary } from "cloudinary";
 
-// 1. Konfigurasi Cloudinary
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 2. Helper: Serialize BigInt agar tidak error saat jadi JSON
 const serialize = (data: any) => {
   return JSON.parse(
     JSON.stringify(data, (key, value) =>
@@ -27,9 +25,6 @@ const getPublicIdFromUrl = (url: string) => {
 
 async function getParams(context: any) { return await context.params; }
 
-// ==========================================
-// [GET] - AMBIL DETAIL OBAT (SOLUSI ERROR JSON)
-// ==========================================
 export async function GET(request: NextRequest, context: any) {
   try {
     const { id } = await getParams(context);
@@ -37,7 +32,7 @@ export async function GET(request: NextRequest, context: any) {
     const data = await prisma.obat.findUnique({
       where: { id: BigInt(id) },
       include: {
-        jenis_obat: true // Penting agar nama kategori muncul di detail
+        jenis_obat: true
       }
     });
 
@@ -55,9 +50,6 @@ export async function GET(request: NextRequest, context: any) {
   }
 }
 
-// ==========================================
-// [PUT] - UPDATE OBAT & FOTO
-// ==========================================
 export async function PUT(request: NextRequest, context: any) {
   try {
     const { id } = await getParams(context);
@@ -101,9 +93,6 @@ export async function PUT(request: NextRequest, context: any) {
   }
 }
 
-// ==========================================
-// [DELETE] - HAPUS OBAT & FOTO
-// ==========================================
 export async function DELETE(request: NextRequest, context: any) {
   try {
     const { id } = await getParams(context);

@@ -3,14 +3,12 @@ import prisma from "@/lib/db";
 import { headers } from "next/headers";
 import { v2 as cloudinary } from "cloudinary";
 
-// 1. Konfigurasi Cloudinary
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 2. Helper: Serialize BigInt
 const serialize = (data: any) => {
   return JSON.parse(
     JSON.stringify(data, (key, value) =>
@@ -19,9 +17,6 @@ const serialize = (data: any) => {
   );
 };
 
-// ==========================================
-// [GET] - AMBIL DATA (STABIL & DINAMIS)
-// ==========================================
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,23 +33,19 @@ export async function GET(request: NextRequest) {
     if (sortParam === "price_desc") orderBy = { harga_jual: 'desc' };
     if (sortParam === "asc") orderBy = { id: 'asc' };
 
-    // --- PERBAIKAN LOGIKA DISINI ---
     const where: any = {};
 
-    // Hanya tambahkan filter nama jika user beneran ngetik sesuatu
     if (q && q.trim() !== "") {
       where.nama_obat = { contains: q };
     }
 
-    // Hanya tambahkan filter kategori jika user beneran milih
     if (idjenis && idjenis.trim() !== "" && idjenis !== "null" && idjenis !== "undefined") {
       where.idjenis = BigInt(idjenis);
     }
 
-    // Ambil data dan hitung total secara paralel
     const [obat, total] = await Promise.all([
       prisma.obat.findMany({
-        where, // Jika q dan idjenis kosong, where jadi {} (artinya ambil semua)
+        where,
         include: { jenis_obat: true },
         orderBy,
         take: limit,
@@ -79,9 +70,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ==========================================
-// [POST] - TAMBAH OBAT BARU (ROLE PROTECTED)
-// ==========================================
 export async function POST(request: NextRequest) {
   try {
     const headerList = await headers();

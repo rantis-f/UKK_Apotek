@@ -21,7 +21,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             updateData.password = await bcrypt.hash(password, 10);
         }
 
-        // 2. Sekarang BigInt(id) tidak akan undefined lagi
         const updatedUser = await prisma.user.update({
             where: { id: BigInt(id) },
             data: updateData,

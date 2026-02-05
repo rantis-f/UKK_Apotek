@@ -17,64 +17,65 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAuthRoute = pathname.startsWith("/api/auth");
-
-  const isPublicGet =
-    (pathname.startsWith("/api/obat") || pathname.startsWith("/api/jenis-obat"))
-    && method === "GET";
+  const isPublicGet = (pathname.startsWith("/api/obat") || pathname.startsWith("/api/jenis-obat")) && method === "GET";
 
   if (isAuthRoute || isPublicGet) {
     const response = NextResponse.next();
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
     return response;
   }
 
   const authHeader = request.headers.get("Authorization");
-
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json(
-      { success: false, message: "Akses Ditolak: Token tidak ditemukan!" },
-      { status: 401, headers: corsHeaders }
-    );
+    return NextResponse.json({ success: false, message: "Akses Ditolak: Token tidak ditemukan!" }, { status: 401, headers: corsHeaders });
   }
 
   const token = authHeader.split(" ")[1];
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    return NextResponse.json(
-      { success: false, message: "Server Error: JWT_SECRET belum disetting." },
-      { status: 500, headers: corsHeaders }
-    );
+    return NextResponse.json({ success: false, message: "Server Error: JWT_SECRET belum disetting." }, { status: 500, headers: corsHeaders });
   }
 
   try {
     const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
 
+    const userRole = String(payload.jabatan || payload.role);
+
+    if (pathname.startsWith("/api/users") || pathname.startsWith("/api/metode-bayar")) {
+      if (userRole !== "admin" && userRole !== "pemilik") {
+        return NextResponse.json({ success: false, message: "Terlarang: Hanya Admin/Pemilik" }, { status: 403, headers: corsHeaders });
+      }
+    }
+
+    if (pathname.startsWith("/api/penjualan") || pathname.startsWith("/api/pelanggan")) {
+      const allowed = ["kasir", "admin", "pemilik"];
+      if (!allowed.includes(userRole)) {
+        return NextResponse.json({ success: false, message: "Terlarang: Hanya Kasir/Admin" }, { status: 403, headers: corsHeaders });
+      }
+    }
+
+    if (pathname.startsWith("/api/distributor") || pathname.startsWith("/api/restock") || (pathname.startsWith("/api/obat") && method !== "GET")) {
+      const allowed = ["apoteker", "admin", "pemilik"];
+      if (!allowed.includes(userRole)) {
+        return NextResponse.json({ success: false, message: "Terlarang: Hanya Apoteker/Admin" }, { status: 403, headers: corsHeaders });
+      }
+    }
+
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-user-id", String(payload.id));
-    requestHeaders.set("x-user-role", String(payload.role));
-    requestHeaders.set("x-user-email", String(payload.email));
+    requestHeaders.set("x-user-role", userRole);
 
     const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
+      request: { headers: requestHeaders },
     });
 
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value));
     return response;
 
   } catch (error) {
-    return NextResponse.json(
-      { success: false, message: "Akses Ditolak: Token kadaluarsa atau tidak valid!" },
-      { status: 401, headers: corsHeaders }
-    );
+    return NextResponse.json({ success: false, message: "Token tidak valid!" }, { status: 401, headers: corsHeaders });
   }
 }
 

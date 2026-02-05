@@ -6,7 +6,6 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { name, email, password, jabatan } = body;
 
-        // Validasi jabatan (Harus sesuai ENUM di database)
         const validJabatan = ['admin', 'apoteker', 'karyawan', 'kasir', 'pemilik'];
         if (!validJabatan.includes(jabatan)) {
             return NextResponse.json({ success: false, message: "Jabatan tidak valid!" }, { status: 400 });
@@ -16,7 +15,7 @@ export async function POST(request: Request) {
             data: {
                 name,
                 email,
-                password, // Nama kolom sesuai image_1c18c3.png (Varchar 255)
+                password,
                 jabatan,
             },
         });

@@ -22,7 +22,6 @@ export async function POST(request: Request) {
             );
         }
 
-        // 4. Cari di Database
         const pelanggan = await prisma.pelanggan.findUnique({
             where: { email: email },
         });

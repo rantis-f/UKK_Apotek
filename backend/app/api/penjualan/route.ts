@@ -1,51 +1,89 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 
+function serializeBigInt(data: any) {
+  return JSON.parse(
+    JSON.stringify(data, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+}
+
+export async function GET() {
+  try {
+    const dataPenjualan = await prisma.penjualan.findMany({
+      include: {
+        pelanggan: true,
+        metode_bayar: true,
+        jenis_pengiriman: true,
+        details: {
+          include: {
+            obat: true
+          }
+        }
+      },
+      orderBy: {
+        tgl_penjualan: "desc"
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: serializeBigInt(dataPenjualan)
+    });
+  } catch (error) {
+    console.error("GET Penjualan Error:", error);
+    return NextResponse.json({ success: false, message: "Gagal mengambil riwayat" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id_pelanggan, id_metode_bayar, id_jenis_kirim, items, ongkos_kirim } = body;
+    const { 
+      id_pelanggan, 
+      id_metode_bayar, 
+      id_jenis_kirim, 
+      items, 
+      ongkos_kirim 
+    } = body;
 
-    if (!items || items.length === 0) {
-      return NextResponse.json({ success: false, message: "Keranjang belanja kosong!" }, { status: 400 });
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      let totalBelanja = 0;
+      const detailData = [];
 
-    let totalBelanja = 0;
+      for (const item of items) {
+        const obat = await tx.obat.findUnique({
+          where: { id: BigInt(item.id_obat) }
+        });
 
-    const detailTransaksi: {
-      id_obat: bigint;
-      jumlah_beli: number;
-      harga_beli: number;
-      subtotal: number;
-    }[] = [];
+        if (!obat) throw new Error(`Obat ID ${item.id_obat} tidak ditemukan`);
+        if (Number(obat.stok) < item.jumlah) {
+          throw new Error(`Stok obat '${obat.nama_obat}' tidak mencukupi! (Sisa: ${obat.stok})`);
+        }
 
-    for (const item of items) {
-      const obat = await prisma.obat.findUnique({ where: { id: BigInt(item.id_obat) } });
+        const subtotal = Number(obat.harga_jual) * item.jumlah;
+        totalBelanja += subtotal;
 
-      if (!obat) {
-        return NextResponse.json({ success: false, message: `Obat ID ${item.id_obat} tidak ditemukan` }, { status: 404 });
+        detailData.push({
+          id_obat: obat.id,
+          jumlah_beli: item.jumlah,
+          harga_beli: Number(obat.harga_jual),
+          subtotal: subtotal
+        });
+
+        // 2. Potong Stok Obat
+        await tx.obat.update({
+          where: { id: obat.id },
+          data: { stok: { decrement: item.jumlah } }
+        });
       }
 
-      if (obat.stok < item.jumlah) {
-        return NextResponse.json({ success: false, message: `Stok ${obat.nama_obat} tidak cukup!` }, { status: 400 });
-      }
+      const biayaApp = 1000; // Biar kayak aplikasi pro
+      const ongkir = Number(ongkos_kirim) || 0;
+      const grandTotal = totalBelanja + ongkir + biayaApp;
 
-      const subtotal = obat.harga_jual * item.jumlah;
-      totalBelanja += subtotal;
-
-      detailTransaksi.push({
-        id_obat: obat.id,
-        jumlah_beli: item.jumlah,
-        harga_beli: obat.harga_jual,
-        subtotal: subtotal,
-      });
-    }
-
-    const biayaApp = 1000;
-    const ongkir = Number(ongkos_kirim) || 0;
-    const grandTotal = totalBelanja + ongkir + biayaApp;
-
-    const hasilTransaksi = await prisma.$transaction(async (tx) => {
+      // 3. Simpan data ke tabel Penjualan
       const penjualanBaru = await tx.penjualan.create({
         data: {
           tgl_penjualan: new Date(),
@@ -55,63 +93,28 @@ export async function POST(request: Request) {
           ongkos_kirim: ongkir,
           biaya_app: biayaApp,
           total_bayar: grandTotal,
-          status_order: 'Diproses',
-          
+          status_order: "Selesai", // Langsung SELESAI karena transaksi Kasir
           details: {
-            create: detailTransaksi
+            create: detailData
           }
         },
         include: { details: true }
       });
-
-      for (const item of items) {
-         await tx.obat.update({
-             where: { id: BigInt(item.id_obat) },
-             data: { stok: { decrement: item.jumlah } }
-         });
-      }
 
       return penjualanBaru;
     });
 
     return NextResponse.json({
       success: true,
-      message: "Transaksi Berhasil!",
-      data: hasilTransaksi,
+      message: "Transaksi Berhasil Disimpan!",
+      data: serializeBigInt(result)
     }, { status: 201 });
 
-  } catch (error) {
-    console.error("Transaction Error:", error);
-    return NextResponse.json({ success: false, message: "Transaksi Gagal" }, { status: 500 });
-  }
-}
-
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id_pelanggan = searchParams.get("id_pelanggan");
-
-    const whereClause = id_pelanggan ? { id_pelanggan: BigInt(id_pelanggan) } : {};
-
-    const dataPenjualan = await prisma.penjualan.findMany({
-      where: whereClause,
-      include: {
-        pelanggan: true,
-        _count: {
-            select: { details: true }
-        }
-      },
-      orderBy: {
-        tgl_penjualan: 'desc'
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: dataPenjualan
-    });
-
-  } catch (error) {
-    return NextResponse.json({ success: false, message: "Gagal ambil riwayat" }, { status: 500 });
+  } catch (error: any) {
+    console.error("POST Penjualan Error:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: error.message || "Gagal memproses transaksi" 
+    }, { status: 400 });
   }
 }
